@@ -11,8 +11,8 @@ _start:
     mov rdx, msg_len
     syscall
 
-    mov rax, 0 ; syscall: read
-    mov rdi, 0 ; fd: stdin
+    xor rax, rax ; syscall: read
+    xor rdi, rdi ; fd: stdin
     mov rsi, buffer ; buffer address
     mov rdx, 64 ; max bytes
     syscall
@@ -38,10 +38,34 @@ parse_loop:
     inc rcx ; i++
     jmp parse_loop ; repeat
 
+parse_done:
+    cmp rbx, 0
+    je is_zero ; jump to is zero if rbx = 0
+    cmp rbx, 1  
+    je is_one ; jump to is_one if rbx = 1
+    cmp rbx, 2 
+    je is_two ; jump to is_two if rbx = 2
+    jmp not_one_or_two
+
+is_one:
+
+is_two:
+
+not_one_or_two:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, err
+    mov rdx, err_len
+    syscall
+    jmp _start
+
+is_zero:
     mov rax, 60 ; syscall: exit
     xor rdi, rdi 
     syscall
 
 section .rodata
-msg db "1. Celcius to Fahrenheit", 10, "2. Fahrenheit to Celcius", 10, "Please select one of the following operations: "
-msg_len equ $ - msg 
+msg db "========================", 10, " TEMPERATURE CONVERTER", 10, "========================", 10, "1. Celcius [°C] to Fahrenheit [°F]", 10, "2. Fahrenheit [°F] to Celcius [°C]", 10, "0. Exit", 10, "Please select one of the following operations: "
+msg_len equ $ - msg
+err db "INvalid input. Please enter 0, 1, or 2.", 10
+err_len equ $ - err
