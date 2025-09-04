@@ -15,7 +15,7 @@ _start:
     xor rax, rax ; syscall: read
     xor rdi, rdi ; fd: stdin
     mov rsi, opt ; buffer address
-    mov rdx, 2 ; max bytes
+    mov rdx, 2 ; newline counted
     syscall
 
     mov al, [opt] ; al = inputted operation
@@ -48,12 +48,12 @@ valid:
     xor rcx, rcx ; index = 0 (rcx holds i)
 
 parse_loop:
-    mov al, [value + rcx] ; load buffer[i]
-    cmp al, 10 ; compare with '\n' (ASCII 10)
+    mov ax, [value + rcx] ; load buffer[i]
+    cmp ax, 10 ; compare with '\n' (ASCII 10)
     je parse_done ; jump to parse_done if newline, stop loop
 
-    sub al, '0' ; convert char to digit by substracting '0'-'9' or ASCII 48 - 57 with '0' or ASCII 48
-    movzx rdx, al ; move digit into rdx (zero-extended)
+    sub ax, '0' ; convert char to digit by substracting '0'-'9' or ASCII 48 - 57 with '0' or ASCII 48
+    movzx rdx, ax ; move digit into rdx (zero-extended)
 
     mov rax, rbx ; copy result into rax
     imul rbx, rbx, 10 ; multiply rbx by 10 -> shift digit to left
@@ -63,7 +63,28 @@ parse_loop:
     jmp parse_loop ; repeat
 
 parse_done:
-    jmp exit
+    cmp al, '1'
+    je if_one
+    cmp al, '2'
+    je if_two
+
+if_one:
+    mov eax, 32
+    cvtsi2ss xmm0, eax ; convert int to float
+    cvtsi2ss xmm1, rbx
+    movss xmm2, [c] ; load float to XMM register
+    mulss xmm1, xmm2 ; xmm1 * 1.8
+    addss xmm1, xmm0 ; xmm1 + 32
+    movss [value], xmm1 ; store back to memory
+
+if_two:
+    mov eax, 32
+    cvtsi2ss xmm0, eax
+    cvtsi2ss xmm1, rbx
+    movss xmm2, [c]
+    subss xmm1, xmm2 ; xmm1 - 32
+    divss xmm1, xmm2 ; xmm1 / 1.8
+    movss [value], xmm1
 
 invalid:
     mov rax, 1
@@ -79,6 +100,8 @@ exit:
     syscall
 
 section .rodata
+c db 1.8
+
 msg db "========================", 10, " TEMPERATURE CONVERTER", 10, "========================", 10, "1. Celcius [°C] to Fahrenheit [°F]", 10, "2. Fahrenheit [°F] to Celcius [°C]", 10, "0. Exit", 10, "Please select one of the following operations: "
 msg_len equ $ - msg
 
