@@ -1,22 +1,46 @@
 ; App.asm
 section .bss
-buffer resb 64 ; Store input
+opt resb 2 ; store operation number
+value resb 64 ; store temp value
 
 section .text
 global _start
 _start:
     mov rax, 1 ; syscall: write
     mov rdi, 1 ; fd: stdout
-    mov rsi, msg
-    mov rdx, msg_len
+    mov rsi, msg ; pointer to msg 
+    mov rdx, msg_len ; max bytes
     syscall
 
     xor rax, rax ; syscall: read
     xor rdi, rdi ; fd: stdin
-    mov rsi, buffer ; buffer address
-    mov rdx, 64 ; max bytes
+    mov rsi, opt ; buffer address
+    mov rdx, 2 ; max bytes
     syscall
-    ; rax = user input
+
+    mov al, [opt] ; al = inputted operation
+
+    cmp al, '0'
+    je exit ; if al == '0' { exit }
+    ; if al == '1' || al == '2' { valid }
+    cmp al, '1'  
+    je valid 
+    cmp al, '2' 
+    je valid
+    jmp invalid ; else { ... }
+
+valid:
+    mov rax, 1 ; syscall: write
+    mov rdi, 1
+    mov rsi, prompt
+    mov rdx, prompt_len
+    syscall
+
+    xor rax, rax ; syscall: read
+    xor rdi, rdi
+    mov rsi, value
+    mov rdx, 64
+    syscall
 
     ; begin parsing loop
     ; initialize result = 0, index = 0
@@ -24,7 +48,7 @@ _start:
     xor rcx, rcx ; index = 0 (rcx holds i)
 
 parse_loop:
-    mov al, [buffer + rcx] ; load buffer[i]
+    mov al, [value + rcx] ; load buffer[i]
     cmp al, 10 ; compare with '\n' (ASCII 10)
     je parse_done ; jump to parse_done if newline, stop loop
 
@@ -39,19 +63,9 @@ parse_loop:
     jmp parse_loop ; repeat
 
 parse_done:
-    cmp rbx, 0
-    je is_zero ; jump to is zero if rbx = 0
-    cmp rbx, 1  
-    je is_one ; jump to is_one if rbx = 1
-    cmp rbx, 2 
-    je is_two ; jump to is_two if rbx = 2
-    jmp not_one_or_two
+    jmp exit
 
-is_one:
-
-is_two:
-
-not_one_or_two:
+invalid:
     mov rax, 1
     mov rdi, 1
     mov rsi, err
@@ -59,7 +73,7 @@ not_one_or_two:
     syscall
     jmp _start
 
-is_zero:
+exit:
     mov rax, 60 ; syscall: exit
     xor rdi, rdi 
     syscall
@@ -67,5 +81,9 @@ is_zero:
 section .rodata
 msg db "========================", 10, " TEMPERATURE CONVERTER", 10, "========================", 10, "1. Celcius [°C] to Fahrenheit [°F]", 10, "2. Fahrenheit [°F] to Celcius [°C]", 10, "0. Exit", 10, "Please select one of the following operations: "
 msg_len equ $ - msg
-err db "INvalid input. Please enter 0, 1, or 2.", 10
+
+prompt db "Please enter the value that you want to convert: "
+prompt_len equ $ - prompt
+
+err db "Invalid input. Please enter 0, 1, or 2.", 10
 err_len equ $ - err
